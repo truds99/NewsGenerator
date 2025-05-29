@@ -10,8 +10,12 @@ const ERROR_TYPES = {
 
 const MIN_TEXT_LENGTH = 500;
 
-export async function getNews() {
-  return newsRepository.getNews();
+export async function getNews(params: {
+  page?: number;
+  order?: "asc" | "desc";
+  title?: string;
+}) {
+  return newsRepository.getNews(params);
 }
 
 export async function getSpecificNews(id: number) {
@@ -63,4 +67,13 @@ async function validateNewsData(newsData: CreateNewsData, checkTitle = true) {
       message: `The news text must have at least ${MIN_TEXT_LENGTH} characters.`,
     };
   }
+
+  const now = new Date();
+  if (new Date(newsData.publicationDate) < now) {
+    throw {
+      name: ERROR_TYPES.BAD_REQUEST,
+      message: `The publication date must not be in the past.`,
+    };
+  }
 }
+

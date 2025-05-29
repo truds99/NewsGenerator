@@ -5,7 +5,7 @@ import prisma from "../src/database";
 import { faker } from '@faker-js/faker';
 import httpStatus from "http-status";
 
-import { generateRandomNews, persistNewRandomNews } from "./factories/news-factory";
+import { generateRandomNews, persistNewRandomNews, persistNewRandomNewsInThePast } from "./factories/news-factory";
 
 const api = supertest(app);
 
@@ -192,5 +192,50 @@ describe("PUT /news", () => {
     expect(status).toBe(httpStatus.BAD_REQUEST);
   });
 
+  describe("GET /news with query params", () => {
+    it("should return max 10 items per page", async () => {
+      for (let i = 0; i < 15; i++) await persistNewRandomNews();
+      
+      const res = await api.get("/news?page=1");
+  
+      expect(res.status).toBe(httpStatus.OK);
+      expect(res.body.length).toBeLessThanOrEqual(10);
+    });
+  
+    it("should return results in ascending order of publicationDate", async () => {
+      await prisma.news.deleteMany();
+      const older = await persistNewRandomNewsInThePast();
+      const newer = await persistNewRandomNews();
+  
+      const res = await api.get("/news?order=asc");
+  
+      expect(res.status).toBe(httpStatus.OK);
+      expect(new Date(res.body[0].publicationDate).getTime()).toBeLessThanOrEqual(
+        new Date(res.body[res.body.length - 1].publicationDate).getTime()
+      );
+    });
+  
+    it("should filter results by title using partial match", async () => {
+      await prisma.news.deleteMany();
+      await persistNewRandomNews();
+  
+      await prisma.news.create({
+        data: {
+          title: "Driven Expansion Project",
+          text: "Some long content for testing.",
+          author: "SLV",
+          firstHand: true,
+          publicationDate: new Date(),
+        },
+      });
+  
+      const res = await api.get("/news?title=Driven");
+  
+      expect(res.status).toBe(httpStatus.OK);
+      expect(res.body.length).toBeGreaterThan(0);
+      expect(res.body[0].title).toContain("Driven");
+    });
+  });
+  
 
 });

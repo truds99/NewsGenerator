@@ -11,13 +11,35 @@ function formatNewsData(newsData: CreateNewsData) {
   };
 }
 
-export function getNews() {
+export function getNews({
+  page = 1,
+  order = "desc",
+  title,
+}: {
+  page?: number;
+  order?: "asc" | "desc";
+  title?: string;
+}) {
+  const take = 10;
+  const skip = (page - 1) * take;
+
   return prisma.news.findMany({
+    where: title
+      ? {
+          title: {
+            contains: title,
+            mode: "insensitive",
+          },
+        }
+      : undefined,
     orderBy: {
-      publicationDate: "desc",
+      publicationDate: order,
     },
+    take,
+    skip,
   });
 }
+
 
 export function getSpecificNews(id: number) {
   return prisma.news.findUnique({
